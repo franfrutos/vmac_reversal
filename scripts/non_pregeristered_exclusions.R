@@ -23,7 +23,7 @@ sum_RTs <- filter_data(raw_all, f.absent = F, sd_filter = NULL, fixed = F) %>%
   dplyr::summarise(RT = mean(rt), .by = c(Experiment, ID))
 
 ggplot(sum_RTs, aes(RT, color = Experiment, fill = Experiment)) +
-  geom_histogram(aes(y = ..density..), alpha = .3, position = position_dodge()) +
+  geom_histogram(aes(y = after_stat(density)), alpha = .3, position = position_dodge()) +
   geom_density(alpha = .3)+
   geom_vline(xintercept = 1000, linetype = "dashed")+
   labs(x = "Response times (ms)")+

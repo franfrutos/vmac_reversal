@@ -49,6 +49,7 @@ filter_data <- function(data,
       filter(rt > low_rt, rt < high_rt) %>%
       select(-c(high_rt, low_rt))
   }
+  out[which(out$Phase != "Practice"),]
   return(out)
 }
 
@@ -288,6 +289,77 @@ report_exclusions <- function(d, acc) {
   cat(paste0("Incorrect responses: ", round(incorrect, 2), "%",
              "\nOutliers RTs: ", round(outliers, 2), "%"))
 }
+
+# Functions to build ROC curve form probit
+get_roc <- function(d, c) {
+  fas <- seq(0, 1, 0.001)
+  hts <- pnorm(d + qnorm(fas))
+  return(list(dp = tibble(hts, fas), c = tibble(fas=pnorm(c),
+                                                hts=pnorm(d+c))))
+}
+
+get_roc_probit <- function(model) {
+  c_s <- predictions(model, datagrid(ID = unique, Experiment = unique, signal = unique),
+                     type = "link", re.form = NA, by = c("Experiment", "signal"))[c(1, 3),]
+  
+  d_s <- predictions(model, datagrid(ID = unique, Experiment = unique, signal = unique),
+                     type = "link", re.form = NA, by = c("Experiment", "signal"),
+                     hypothesis = "sequential")[c(1, 3),]
+  
+
+  roc0 <- get_roc(d_s$estimate[1], c_s$estimate[1])
+  roc1 <- get_roc(d_s$estimate[2], c_s$estimate[2])
+  
+  # dprime
+  roc0$dp$upp <- get_roc(d_s$conf.high[1], 0)$dp$hts
+  roc0$dp$low <- get_roc(d_s$conf.low[1], 0)$dp$hts
+  
+  roc1$dp$upp <- get_roc(d_s$conf.high[2], 0)$dp$hts
+  roc1$dp$low <- get_roc(d_s$conf.low[2], 0)$dp$hts
+  
+  rocs_d <- rbind(roc0$dp, roc1$dp)
+  
+  rocs_d$Experiment <- as.factor(rep(c("Implicit reversal", "Explicit reversal"), each = nrow(rocs_d)/2))
+  
+  # c 
+  
+  rocs_c <- rbind(roc0$c, roc1$c)
+  rocs_c$Experiment <- as.factor(c("Implicit reversal", "Explicit reversal"))
+  
+  # Raw data:
+  raw_aw <- d_aw %>% 
+    #filter(Singleton != "Absent") %>%
+    dplyr::summarise(Prop = mean(response_aw), .by = c(ID, Experiment, signal)) %>% drop_na() %>%
+    spread(signal, Prop) %>%
+    mutate(hts = `-0.5`,
+           fas = (`0.5`))
+  
+  raw_aw$Experiment <- ifelse(raw_aw$Experiment== "A", "Explicit reversal", "Implicit reversal")
+  
+  plot <- ggplot(rocs_d, aes(1-fas, 1-hts, color = Experiment)) +
+    geom_point(data = raw_aw, alpha = .2, aes(fas, hts)) +
+    geom_line(aes(fas, hts))+
+    geom_ribbon(aes(ymin = upp, ymax = low, fill = Experiment, x = fas, y = hts), color = NA,
+                alpha = .1)+
+    geom_point(data = rocs_c, aes(fas, hts),
+               size = 2) +
+    geom_line(data = rocs_d %>% filter(((fas < pnorm(c_s$conf.high[1]) & fas > pnorm(c_s$conf.low[1])) & Experiment == "Implicit reversal") |
+                                         ((fas < pnorm(c_s$conf.high[2]) & fas > pnorm(c_s$conf.low[2])) & Experiment == "Explicit reversal")),
+              linewidth = 3, alpha = .3, lineend = "round", aes(fas, hts)) +
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed")+
+    scale_color_manual(values = c("darkred", "darkblue")) +
+    scale_fill_manual(values = c("darkred", "darkblue")) +
+    coord_cartesian(xlim = c(0.045,.958)) +
+    theme_Publication() +
+    # labs(x = "False alarm rate", y = "Hit rate", title = "ROC curve for hierarchical EVSDT probit",
+    #      subtitle = "Shaded segments represents 95% Confidence Intervals") +
+    labs(x = "False alarm rate", y = "Hit rate") +
+    theme(aspect.ratio = 1)
+  
+  return(plot)
+}
+
+
 
 # Load data ----
 source("scripts/load_data.R") # Automatically load data

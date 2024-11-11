@@ -237,7 +237,7 @@ merge_data$Experiment <- factor(merge_data$Experiment, levels = c("Experiment 1"
 #merge_data$Singleton <- factor(merge_data$Singleton, levels = c("High", "Low"))
 
 
-afex::aov_ez(data = merge_data, id = "ID", dv = "VMAC",
+plot <- afex::aov_ez(data = merge_data, id = "ID", dv = "VMAC",
                within = c("Phase"), between = "Experiment", anova_table = list(es = "pes")) %>%
   afex_plot(., x="Experiment", trace = "Phase", error = "CMO", mapping = c("color", "shape"),
             dodge = .1,
@@ -255,10 +255,13 @@ afex::aov_ez(data = merge_data, id = "ID", dv = "VMAC",
   labs(y = "VMAC effect (ms)") +
   scale_color_brewer(palette = "Set1")
 
+plot[["layers"]][[3]] <- NULL
+plot[["layers"]][[5]] <- NULL
+plot
 ggsave(
   "plots/reversal_exps.png",
   height = 15,
-  width = 20,
+  width = 17,
   dpi = 1200,
   units = "cm"
 ) 
@@ -457,7 +460,7 @@ ggsave(
 ) 
 
 # Awareness ----
-d_aw <- raw2[raw2$Phase == "Awareness" & raw2$Singleton != "Absent" & !raw2$ID %in% acc_ex2,]
+d_aw <- raw2[raw2$Phase == "Awareness" & !raw2$ID %in% acc_ex2 & raw2$Singleton != "Absent",]
 d_aw$response_aw <- ifelse(d_aw$response == "c", 1, 0)
 d_aw$signal <- ifelse(d_aw$Singleton == "High", .5, -.5)
 d_aw$Experiment <- factor(d_aw$Experiment, levels = unique(d_aw$Experiment))
@@ -466,84 +469,164 @@ contrasts(d_aw$Experiment) <- contr.sum(2)/2
 fit_aw <- glmer(response_aw~signal*Experiment+(signal|ID),data=d_aw,family=binomial(link="probit"),
                 control = glmerControl(optimizer = "bobyqa"))
 
-
-get_roc <- function(d, c) {
-  fas <- seq(0, 1, 0.001)
-  hts <- pnorm(d + qnorm(fas))
-  return(list(dp = tibble(hts, fas), c = tibble(fas=pnorm(c),
-                                                hts=pnorm(d+c))))
-}
-
-get_roc_probit <- function(model) {
-  c_s <- predictions(model, datagrid(ID = unique, Experiment = unique, signal = unique),
-                     type = "link", re.form = NULL, by = c("Experiment", "signal"))[c(1, 3),]
-  
-  d_s <- predictions(model, datagrid(ID = unique, Experiment = unique, signal = unique),
-                     type = "link", re.form = NULL, by = c("Experiment", "signal"),
-                     hypothesis = "sequential")[c(1, 3),]
-  
-  roc0 <- get_roc(d_s$estimate[1], c_s$estimate[1])
-  roc1 <- get_roc(d_s$estimate[2], c_s$estimate[2])
-  
-  # dprime
-  roc0$dp$upp <- get_roc(d_s$conf.high[1], 0)$dp$hts
-  roc0$dp$low <- get_roc(d_s$conf.low[1], 0)$dp$hts
-  
-  roc1$dp$upp <- get_roc(d_s$conf.high[2], 0)$dp$hts
-  roc1$dp$low <- get_roc(d_s$conf.low[2], 0)$dp$hts
-  
-  rocs_d <- rbind(roc0$dp, roc1$dp)
-  rocs_d$Experiment <- as.factor(rep(c("Implicit reversal", "Explicit reversal"), each = nrow(rocs_d)/2))
-  
-  # c 
-  
-  print(pnorm(-c_s$conf.low))
-  print(pnorm(-c_s$conf.high))
-  #roc0$c$upp <- get_roc(d_s$estimate[1], c_s$conf.high[1])$c$
-  #roc0$c$low <- get_roc(d_s$estimate[1], c_s$conf.low[1])
-  
-  #roc1$c$upp <- get_roc(d_s$estimate[2], c_s$conf.high[2])
-  #roc1$c$low <- get_roc(d_s$estimate[2], c_s$conf.low[2])
-  
-  rocs_c <- rbind(roc0$c, roc1$c)
-  rocs_c$Experiment <- as.factor(c("Implicit reversal", "Explicit reversal"))
-  
-  # Raw data:
-  raw_aw <- d_aw %>% 
-    filter(Singleton != "Absent") %>%
-    dplyr::summarise(Prop = mean(response_aw), .by = c(ID, Experiment, signal)) %>% drop_na() %>%
-    spread(signal, Prop) %>%
-    mutate(hts = `0.5`,
-           fas = (`-0.5`))
-  
-  raw_aw$Experiment <- ifelse(raw_aw$Experiment== "A", "Explicit reversal", "Implicit reversal")
-  
-  plot <- ggplot(rocs_d, aes(1-fas, 1-hts, color = Experiment)) +
-    geom_point(data = raw_aw, alpha = .3) +
-    geom_line()+
-    geom_ribbon(aes(ymin = 1-upp, ymax = 1-low, fill = Experiment), color = NA,
-                alpha = .3)+
-    geom_point(data = rocs_c, aes(1-fas, 1-hts),
-               size = 2) +
-    geom_line(data = rocs_d %>% filter(((fas < pnorm(c_s$conf.high[1]) & fas > pnorm(c_s$conf.low[1])) & Experiment == "Implicit reversal") |
-                                         ((fas < pnorm(c_s$conf.high[2]) & fas > pnorm(c_s$conf.low[2])) & Experiment == "Explicit reversal")),
-              linewidth = 3, alpha = .3, lineend = "round") +
-    geom_abline(intercept = 0, slope = 1, linetype = "dashed")+
-    scale_color_manual(values = c("darkred", "darkblue")) +
-    scale_fill_manual(values = c("darkred", "darkblue")) +
-    coord_cartesian(xlim = c(0.045,.958)) +
-    theme_Publication() +
-    # labs(x = "False alarm rate", y = "Hit rate", title = "ROC curve for hierarchical EVSDT probit",
-    #      subtitle = "Shaded segments represents 95% Confidence Intervals") +
-    labs(x = "False alarm rate", y = "Hit rate") +
-    theme(aspect.ratio = 1)
-  
-  return(plot)
-}
-
+summary(fit_aw)
 
 get_roc_probit(fit_aw) 
 
 ggsave("plots/plots_roc.png", height = 15, width = 15, dpi = 900,
        units = "cm")
+
+# Individual differences in awareness ----
+# Try with and without random effects
+fit_awb <- glmer(response_aw~signal+(signal|ID),data=d_aw[d_aw$Experiment == "A",],family=binomial(link="probit"),
+                control = glmerControl(optimizer = "bobyqa"))
+
+
+HcRepRev <- hypr(
+  VMAC = High ~ Low, # Negative VMAC effect when there is a reversal
+  AC = Low ~ Absent, # New low is compared against absent
+  levels = c("High", "Low", "Absent")
+)
+
+d2 <- filter_data(raw2, f.absent = F, experiment = "e2") %>% filter(Experiment == "A", Singleton != "Absent")
+d2$Epoch <- create_epochs(d2$Block_num, 2)
+d2$log_RT <- log(d2$rt)
+d2$Singleton <- factor(d2$Singleton, levels = c("High", "Low"))
+#d2$Singleton <- factor(d2$Singleton, levels = c("High", "Low", "Absent"))
+d2$ID <- as.factor(d2$ID)
+#contrasts(d2$Singleton) <- HcRepRev
+contrasts(d2$Singleton) <- contr.sum(2)/2
+
+ranef_df <- coef(fit_awb)$ID %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "ID")%>%
+  mutate(ID = as.factor(ID)) %>%
+  left_join(d2, ., by = "ID")
+
+#ranef_df$Group<- ifelse(ranef_df$signal >= quantile(ranef_df$signal, probs = .5), "High", "Low")
+
+f_d <-
+  lmer(
+    log_RT ~ Singleton*signal*scale(log(Block_num)) + (Singleton + scale(log(Block_num)) | ID),
+    control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
+    data = ranef_df[ranef_df$Phase == "Reversal" & ranef_df$Experiment == "A", ]
+  )
+
+summary(f_d)
+
+new_data <- expand.grid(
+  Singleton = unique(ranef_df$Singleton),
+  Block_num =  13:24,
+  signal = unique(ranef_df$signal),
+  ID = NA# marginaleffects needs a valid value for ID, letter we will set re.form 
+)
+
+# Step 3: Generate Predictions
+# Generate predictions for the specific levels of 'signal' for each participant
+preds <- avg_comparisons(f_d, newdata = new_data, re.form = NA, variables = "Singleton",
+                         by = "signal", 
+                         comparison  = \(hi, lo) exp(hi + (sigma(f_d) ^ 2) / 2) - exp(lo + (sigma(f_d) ^ 2) / 2))
+
+coef(fit_awb)$ID %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "ID")%>%
+  mutate(ID = as.factor(ID)) -> a
+a<- ranef_df %>% filter(Phase == "Reversal") %>%
+  dplyr::summarise(rt = mean(rt), .by = c(ID, Singleton)) %>%
+  spread(Singleton, rt) %>% mutate(VMAC = Low - High) %>%
+  left_join(., a, by = "ID")
+
+ggplot(preds, aes(x = signal, y = estimate)) +
+  geom_line() +
+  geom_point(data=a, aes(y = VMAC, x = signal)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), color = NA, alpha = .2) +
+  scale_y_continuous(breaks = seq(-60, 90, 30)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(x = expression(bolditalic(d) * "'"),
+       y = "VMAC effect (ms)",
+       color = "Singleton") +
+  theme_Publication()
+
+# Paso 2: Crear las Columnas de Hits y Falsas Alarmas en los Datos
+# Suponiendo que `response_aw` == 1 indica una respuesta correcta y `signal` == 1 indica la presencia de la señal
+d_awb <- d_aw[d_aw$Experiment == "B" & d_aw$Singleton != "Absent",] %>%
+  mutate(
+    hits = ifelse(response_aw == 1 & signal == 0.5, 1, 0),           # Acierto cuando hay señal (signal == 1)
+    fas = ifelse(response_aw == 1 & signal == -0.5, 1, 0)    # Falsa alarma cuando no hay señal (signal == 0)
+  )
+
+# Paso 3: Calcular las Tasas de Hits y Falsas Alarmas por Participante
+rates_df <- d_awb %>%
+  group_by(ID) %>%
+  dplyr::summarise(
+    hit_rate = mean(hits),
+    fa_rate = mean(fas),
+    n = n()
+  )
+
+calculate_d_prime <- function(hit_rate, fa_rate) {
+  # Aplicar correcciones de continuidad según el número de ensayos
+  hit_rate <- ifelse(hit_rate == 1, 1 - 1 / (2 * 40), 
+                     ifelse(hit_rate == 0, 1 / (2 * 40), hit_rate))
+  
+  fa_rate <- ifelse(fa_rate == 1, 1 - 1 / (2 * 40), 
+                    ifelse(fa_rate == 0, 1 / (2 * 40), fa_rate))
+  
+  # Calcular d' (d-prime)
+  z_hit_rate <- qnorm(hit_rate)
+  z_fa_rate <- qnorm(fa_rate)
+  d_prime <- z_hit_rate - z_fa_rate
+  
+  return(d_prime)
+}
+
+# Paso 4: Calcular d' para Cada Participante
+rates_df <- rates_df %>%
+  mutate(d_prime = calculate_d_prime(hit_rate, fa_rate))
+
+# Ver los resultados
+print(rates_df)
+
+sample_df <- rates_df %>% 
+  mutate(ID = as.factor(ID)) %>%
+  left_join(d2, ., by = "ID") %>%
+  drop_na()
+
+f_d2 <-
+  lmer(
+    log_RT ~ Singleton * scale(log(Block_num))*scale(d_prime) + (Singleton+scale(log(Block_num)) | ID),
+    control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
+    data = sample_df[sample_df$Phase == "Reversal" & sample_df$Experiment == "B", ]
+  )
+
+summary(f_d2)
+
+ggplot(rates_df, aes(d_prime)) +
+  geom_histogram(aes(y=after_stat(density))) +
+  geom_density()
+
+
+# Between experiment comparison ----
+combined_d <- bind_rows(
+  filter_data(raw, f.absent = F) %>% 
+    filter(Phase == "Reversal") %>% 
+    mutate(Experiment = "1") %>% select(ID, rt, Singleton, Block_num, Experiment),
+  filter_data(raw2, f.absent = F, experiment = "e2") %>%
+    filter(Phase == "Reversal") %>%
+    select(ID, rt, Singleton, Block_num, Experiment),
+)
+
+combined_d$Epoch <- create_epochs(combined_d$Block_num, 2)
+combined_d$log_RT <- log(combined_d$rt)
+combined_d$Singleton <- factor(combined_d$Singleton, levels = c("High", "Low"))
+contrasts(d2$Singleton) <- contr.sum(2)/2
+
+f_combined <-
+  lmer(
+    log_RT ~ Singleton * scale(log(Block_num)) * Experiment + (Singleton*scale(log(Block_num)) | ID),
+    control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
+    data = combined_d
+  )
+
+summary(f_combined)
 
