@@ -124,7 +124,8 @@ keywords:
 
 author-note:
   disclosures:
-    study-registration: "Hypothesis, design and data analysis for Experiment 2a and 2b of the present study were preregistered before data collection at https://osf.io/f3bm8."
+    study-registration: "Hypothesis, design and data analysis for Experiment 2a and 2b of the present study were preregistered before data collection at <https://osf.io/f3bm8>."
+    financial-support: "FGF was supported by an FPU predoctoral fellowship (FPU20/00826) from MICIU/AEI/10.13039/501100011033. PML was supported by grant PRE2022-103151 funded by MICIU/AEI/10.13039/501100011033 and ESF+. Grant PID2021-127985NB-I00 awarded to FG was funded by MCIN/AEI/10.13039/501100011033, and ERDF A way of making Europe, by the European Union. MAV and RRS were supported by project PID2023-150830NB-I00 funded by MICIU/AEI/10.13039/501100011033 and FEDER, UE. DL was supported by grant PID2021-126767NB-I00 funded by MICIU/AEI/10.13039/501100011033 and FEDER, UE."
     authorship-agreements: ~
 
 suppress-impact-statement: true
@@ -171,13 +172,6 @@ format:
         \setlength{\parskip}{0pt}
         \setlength{\textfloatsep}{12pt}
         \setlength{\intextsep}{12pt}
-        \AtBeginDocument{
-          \setlength{\abovedisplayskip}{16pt}
-          \setlength{\belowdisplayskip}{24pt}
-          \setlength{\abovedisplayshortskip}{14pt}
-          \setlength{\belowdisplayshortskip}{22pt}
-          \setlength{\jot}{6pt}
-        }
     pdf-engine: latexmk
     pdf-engine-opts:
       - -xelatex
