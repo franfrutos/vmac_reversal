@@ -1,0 +1,5 @@
+project:
+  type: default
+  output-dir: output/manuscript
+  post-render:
+    - scripts/post_render_cleanup.cmd

@@ -1,5 +1,9 @@
+## -----------------------------------------------------------------------------
+## Author: Francisco Garre-Frutos
+## -----------------------------------------------------------------------------
+
 if (!require(pacman)) {
-  install.packages(pacman)
+  install.packages("pacman")
   library(pacman)
 }
 
@@ -7,6 +11,9 @@ if (!require(pacman)) {
 p_load(dplyr, lme4, lmerTest, marginaleffects, hypr, simr, pbapply, future, parallel, performance)
 
 source("scripts/functions.R")
+source("scripts/load_data.R")
+
+ensure_project_dirs()
 
 # Setting model contrasts with hypr package
 HcRepRev <- hypr(
@@ -17,7 +24,7 @@ HcRepRev <- hypr(
 
 # Model in reversal: 
 # Reversal:
-d_RT_rev <- filter_data(raw_q, f.absent = F) %>% filter(Phase == "Reversal")
+d_RT_rev <- filter_data(raw, f.absent = F) %>% filter(Phase == "Reversal")
 d_RT_rev$log_RT <- log(d_RT_rev$rt)
 d_RT_rev$Singleton <- factor(d_RT_rev$Singleton, levels = c("High", "Low", "Absent"))
 contrasts(d_RT_rev$Singleton) <- HcRepRev
@@ -79,7 +86,7 @@ ggplot(power[power$Effect != "Check",], aes(x = N, y = mean, color = Effect)) +
 
 
 ggsave(
-  "plots/power_plot.png",
+  "output/figures/power_plot.png",
   height = 12,
   width = 15,
   dpi = 1200,

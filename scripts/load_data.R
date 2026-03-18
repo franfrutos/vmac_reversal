@@ -1,12 +1,33 @@
+## -----------------------------------------------------------------------------
+## Author: Francisco Garre-Frutos
+## -----------------------------------------------------------------------------
+
 # Installing (if needed) and loading the packages ----
 if (!require(pacman)) {
-  install.packages(pacman)
+  install.packages("pacman")
   library(pacman)
 }
 
 p_load(here, dplyr, tidyr, afex)
 
 setwd(here::here())
+
+if (!exists("report_exclusions")) {
+  report_exclusions <- function(d, acc) {
+    incorrect <- (1 - nrow(d[which(d$correct == 1 & !d$ID %in% acc), ]) /
+      nrow(d[which(!d$ID %in% acc), ])) * 100
+    outliers <- (1 - nrow(d[which(d$correct == 1 & !d$ID %in% acc &
+      (d$rt > 150 & d$rt < 1800)), ]) /
+      nrow(d[which(d$correct == 1 & !d$ID %in% acc), ])) * 100
+
+    cat(
+      paste0(
+        "Incorrect responses: ", round(incorrect, 2), "%",
+        "\nOutliers RTs: ", round(outliers, 2), "%"
+      )
+    )
+  }
+}
 
 # Experiment 1----
 raw <- read.csv("Input/data_e1.csv") %>%
@@ -43,13 +64,9 @@ raw %>%
   dplyr::count() # 91 participants with complete observations and ACC > .7
 
 # Report trial exclusions:
+print("Experiment 1:")
 report_exclusions(raw, acc_ex)
 
-# Sample characteristic:
-# cat(paste0("Mean age: ", round(mean(quests$Edad), 2), ", SD age: ",
-#        round(sd(quests$Edad), 2), "\nNumber of self-identified as female: ",
-#        length(quests$Sexo[quests$Sexo == 2])))
-# 
 # Experiments 2a and 2b ----
 raw2 <- read.csv("Input/data_e2.csv") %>%
   mutate(Phase = ifelse(Phase == "Reward", "Acquisition", Phase),
@@ -76,15 +93,13 @@ acc_ex2 <- raw2 %>%
   filter(mean_ACC < .7) %>%
   pull(ID) # All participants above cut-off
 
-# Excluded participants with mean RTs above 1000 ms (see non_preregistered_exclusions.R)
-acc_ex2 <- c(553218, 871382) 
 
 raw2 %>%
   filter(!ID %in% acc_ex2, Phase %in% c("Acquisition", "Reversal")) %>%
   group_by(Experiment, ID, Phase) %>%
   dplyr::count() %>%
   group_by(Experiment, Phase) %>%
-  dplyr::count() # 61 and 62 participants with complete observations and ACC > .7
+  dplyr::count() 
 
 # Report trial exclusions for experiment 2A and 2B:
 print("Experiment 2A:")
@@ -93,16 +108,6 @@ report_exclusions(raw2[which(raw2$Experiment == "A"),], acc_ex2)
 print("Experiment 2B:")
 report_exclusions(raw2[which(raw2$Experiment == "B"),], acc_ex2)
 
-# TODO:
-# Sample characteristic for experiment 2A:
-# cat(paste0("Mean age: ", round(mean(quests$Edad), 2), ", SD age: ",
-#            round(sd(quests$Edad), 2), "\nNumber of self-identified as female: ",
-#            length(quests$Sexo[quests$Sexo == 2])))
-# 
-# # Sample characteristic for experiment 2B:
-# cat(paste0("Mean age: ", round(mean(quests$Edad), 2), ", SD age: ",
-#            round(sd(quests$Edad), 2), "\nNumber of self-identified as female: ",
-#            length(quests$Sexo[quests$Sexo == 2])))
 
 # Merged dataset ----
 raw_all <- bind_rows(
@@ -113,5 +118,10 @@ raw_all <- bind_rows(
     select(ID, Block_num, trial_num, Phase, Singleton, rt, correct, Experiment)
 )
 
+descriptive_e1 <- read.csv("Input/descriptive_e1.csv")
+descriptive_e2 <- read.csv("Input/descriptive_e2.csv")
 
-  
+descriptive_e2 <- descriptive_e2 %>%
+  mutate(ID = factor(ID)) %>%
+  inner_join(raw2 %>% mutate(ID = factor(ID)) %>%
+               select(ID, Experiment, University) %>% distinct(), by = "ID")
