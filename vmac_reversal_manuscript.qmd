@@ -171,10 +171,13 @@ format:
         \setlength{\parskip}{0pt}
         \setlength{\textfloatsep}{12pt}
         \setlength{\intextsep}{12pt}
-        \setlength{\abovedisplayskip}{14pt}
-        \setlength{\belowdisplayskip}{18pt}
-        \setlength{\abovedisplayshortskip}{12pt}
-        \setlength{\belowdisplayshortskip}{16pt}
+        \AtBeginDocument{
+          \setlength{\abovedisplayskip}{16pt}
+          \setlength{\belowdisplayskip}{24pt}
+          \setlength{\abovedisplayshortskip}{14pt}
+          \setlength{\belowdisplayshortskip}{22pt}
+          \setlength{\jot}{6pt}
+        }
     pdf-engine: latexmk
     pdf-engine-opts:
       - -xelatex
