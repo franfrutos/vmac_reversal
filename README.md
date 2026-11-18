@@ -76,7 +76,7 @@ To ensure all scripts run correctly without the need to manually set working dir
 * **Preregistration of Experiments 2a and 2b:** <https://osf.io/g96yj>
 * **Preprint:** <https://doi.org/10.31234/osf.io/uwge3>
 * **Data from Le et al. (2025):** <https://osf.io/nuaxg>
-* **Zenodo archive:** [ZENODO DOI — TO BE ADDED]
+* **Zenodo archive:** <https://doi.org/10.5281/zenodo.24354355>
 
 ## 📄 License
 
