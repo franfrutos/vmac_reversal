@@ -74,10 +74,11 @@ f.l2_log <-
 
 summary(f.l2_log) # Log-maximal model
 
-anova(f.l2, f.l2_log) # |AIC_Log - AIC_Linear| = 200.3
+aic_acq <- anova(f.l2, f.l2_log)
+aic_acq # |AIC_Log - AIC_Linear| = 200.3
 
 # Selected model predictions
-predictions(
+pred_acq <- predictions(
   f.l2_log,
   newdata = datagrid(
     Singleton = unique,
@@ -90,7 +91,7 @@ predictions(
 )
 
 # VMAC and AC effects:
-avg_comparisons(
+comp_acq <- avg_comparisons(
   f.l2_log,
   variables = list(Singleton = "revsequential"),
   newdata = datagrid(
@@ -101,6 +102,8 @@ avg_comparisons(
   re.form = NA,
   comparison = \(hi, lo) exp(hi + (sigma(f.l2_log) ^ 2) / 2) - exp(lo + (sigma(f.l2_log) ^ 2) / 2)
 )
+pred_acq
+comp_acq
 
 # Reversal model:
 d_RT_rev <- filter_data(raw, f.absent = F) %>% filter(Phase == "Reversal")
@@ -135,10 +138,11 @@ fRev.l2_log <-
 
 summary(fRev.l2_log) # Maximal model 
 
-anova(fRev.l2, fRev.l2_log) ## |AIC_Log - AIC_Linear| = 6
+aic_rev <- anova(fRev.l2, fRev.l2_log)
+aic_rev ## |AIC_Log - AIC_Linear| = 6
 
 # Selected model predictions
-predictions(
+pred_rev <- predictions(
   fRev.l2_log,
   newdata = datagrid(
     Singleton = unique,
@@ -151,7 +155,7 @@ predictions(
 )
 
 # VMAC and AC effects:
-avg_comparisons(
+comp_rev <- avg_comparisons(
   fRev.l2_log,
   variables = list(Singleton = "revsequential"),
   newdata = datagrid(
@@ -162,6 +166,8 @@ avg_comparisons(
   re.form = NA,
   comparison = \(hi, lo) exp(hi + (sigma(fRev.l2_log) ^ 2) / 2) - exp(lo + (sigma(fRev.l2_log) ^ 2) / 2)
 )
+pred_rev
+comp_rev
 
 # Difference between phases? ----
 phase_aovE1 <- filter_data(raw, f.absent = T, phase = c("Acquisition", "Reversal")) %>%
@@ -265,7 +271,7 @@ preds_palette_fill <- c("High" = "#F29CA5", "Low" = "#9DDCF2", "Absent" = "grey8
 preds_palette_line <- c("High" = "#C9333E", "Low" = "#228BCB", "Absent" = "grey50")
 
 
-# Gráfico base con más espacio entre facets
+# Model predictions by block:
 plot1_predsRT <- ggplot(data = preds[["mod"]],
                         aes(y = estimate, x = Block_num, color = Singleton, fill = Singleton)) +
   geom_line(linewidth = 1.1) +
@@ -356,11 +362,11 @@ subplot_left <- ggplotGrob(plot1_compACQ + theme(legend.position = "none"))
 subplot_right <- ggplotGrob(plot1_compREV + theme(legend.position = "none"))
 
 final_plot_1 <- ggdraw(plot1_predsRT) +
-  # Subplot izquierdo (ajusta x/y para posición)
+  # Acquisition inset (left)
   draw_plot(subplot_left,
-            x = 0.3, y = .555,   # Posición (x: izquierda/derecha, y: arriba/abajo)
-            width = 0.175, height = 0.25) +  # Tamaño relativo
-  # Subplot derecho
+            x = 0.3, y = .555,
+            width = 0.175, height = 0.25) +
+  # Reversal inset (right)
   draw_plot(subplot_right,
             x = 0.565, y = .565,
             width = 0.165, height = 0.25)
@@ -395,5 +401,24 @@ save_analysis_objects(
   predictions = preds,
   comparisons = comps,
   contingency_points = points,
-  final_plot = final_plot_1
+  final_plot = final_plot_1,
+  # Values reported in the text
+  reported = list(
+    demographics = data.frame(
+      n = nrow(descriptive_e1),
+      females = sum(descriptive_e1$Sexo == 2),
+      age_min = min(descriptive_e1$Edad),
+      age_max = max(descriptive_e1$Edad),
+      age_mean = mean(descriptive_e1$Edad),
+      age_sd = sd(descriptive_e1$Edad),
+      n_excluded = length(unique(acc_ex))
+    ),
+    exclusions = exclusions_e1,
+    aic_diff = c(
+      acquisition = abs(diff(aic_acq$AIC)),
+      reversal = abs(diff(aic_rev$AIC))
+    ),
+    predictions = list(acquisition = as.data.frame(pred_acq), reversal = as.data.frame(pred_rev)),
+    comparisons = list(acquisition = as.data.frame(comp_acq), reversal = as.data.frame(comp_rev))
+  )
 )

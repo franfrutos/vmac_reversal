@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+Rplots.pdf
 results/
 figs/
 models/*.rds
@@ -11,23 +12,16 @@ models/*.exe
 vmac_reversal_manuscript_files/
 
 /.quarto/
-/output/analysis/
-/output/models/
-/output/figures/
-/output/manuscript/output/
-/output/manuscript/*.aux
-/output/manuscript/*.bbl
-/output/manuscript/*.bcf
-/output/manuscript/*.blg
-/output/manuscript/*.fdb_latexmk
-/output/manuscript/*.fls
-/output/manuscript/*.log
-/output/manuscript/*.out
-/output/manuscript/*.run.xml
-/output/manuscript/*.synctex.gz
-/output/manuscript/*.tex
-/output/manuscript/*.toc
-/output/manuscript/*.xdv
+# Cover letters and other editorial documents
+/editorial/
+/output/models/model_comparison_Rev*.rds
+/output/models/recovery/test/
+/output/models/recovery/run*.log
+# Only the final manuscript, preprint, and Supplementary Material are kept
+/output/manuscript/*
+!/output/manuscript/vmac_reversal_manuscript.pdf
+!/output/manuscript/vmac_reversal_preprint.pdf
+!/output/manuscript/vmac_reversal_supplementary.pdf
 /vmac_reversal_manuscript.aux
 /vmac_reversal_manuscript.bbl
 /vmac_reversal_manuscript.bcf
@@ -45,3 +39,6 @@ vmac_reversal_manuscript_files/
 .httr-oauth
 .DS_Store
 .quarto
+
+**/*.quarto_ipynb
+/output/models/session_info_model_fits.txt

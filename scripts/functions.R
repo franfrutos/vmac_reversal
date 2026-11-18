@@ -298,6 +298,8 @@ sim_lme4 <- function(dat, model){
 
 # Report trial exclusions: 
 report_exclusions <- function(d, acc) {
+  # Only the trials of the task (no practice or awareness test)
+  d <- d[which(d$Phase %in% c("Acquisition", "Reversal")),]
   incorrect <- (1-nrow(d[which(d$correct == 1 & !d$ID %in% acc),])/
      nrow(d[which(!d$ID %in% acc),]))*100
   outliers <- (1-nrow(d[which(d$correct == 1 & !d$ID %in% acc & (d$rt > 150 & d$rt < 1800)),])/
@@ -305,6 +307,8 @@ report_exclusions <- function(d, acc) {
   
   cat(paste0("Incorrect responses: ", round(incorrect, 2), "%",
              "\nOutliers RTs: ", round(outliers, 2), "%"))
+  # Percentages reported in the manuscript
+  invisible(list(incorrect = incorrect, outliers = outliers))
 }
 
 # Functions to build ROC curve form probit
@@ -316,12 +320,15 @@ get_roc <- function(d, c) {
 }
 
 get_roc_probit <- function(model) {
+  # Criterion (signal = 0.5) and d' (-0.5 minus 0.5) by Experiment, selected by value
+  # because the row order of predictions() depends on the marginaleffects version
   c_s <- predictions(model, datagrid(ID = unique, Experiment = unique, signal = unique),
-                     type = "link", re.form = NA, by = c("Experiment", "signal"))[c(1, 3),]
-  
+                     type = "link", re.form = NA, by = c("Experiment", "signal"))
+  c_s <- c_s[c_s$signal == 0.5,]
+
   d_s <- predictions(model, datagrid(ID = unique, Experiment = unique, signal = unique),
                      type = "link", re.form = NA, by = c("Experiment", "signal"),
-                     hypothesis = "sequential")[c(1, 3),]
+                     hypothesis = difference ~ revreference | Experiment)
   
 
   roc0 <- get_roc(d_s$estimate[1], c_s$estimate[1])
@@ -534,10 +541,11 @@ extract_model_term <- function(model, term, conf_level = 0.95, conf_method = "Wa
   out$estimate <- out[[1]]
   out$std_error <- out[[2]]
   
-  stat_col <- names(out)[3]
+  # Columns selected by name, because lmerTest adds a df column before the t value
+  stat_col <- grep("^(t|z) value$", names(out), value = TRUE)[1]
   p_col <- names(out)[ncol(out) - 3 + 1]
-  df_col <- names(out)[4]
-  
+  df_col <- "df"
+
   if ("Pr(>|t|)" %in% names(out)) {
     p_col <- "Pr(>|t|)"
   } else if ("Pr(>|z|)" %in% names(out)) {
@@ -588,9 +596,9 @@ latex_model_term <- function(model,
     )
   } else {
     paste0(
-      "$", res$statistic_label, "_{",
+      "$", res$statistic_label, "(",
       format_num_latex(res$df, digits = df_digits),
-      "} = ",
+      ") = ",
       format_num_latex(res$statistic, digits = stat_digits),
       "$"
     )

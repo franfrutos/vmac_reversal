@@ -1,0 +1,5 @@
+"group","group_id","group_label","model","model_id","model_label","loo_method","elpd_loo","se_elpd_loo","p_loo","looic","n_bad_k","max_k"
+"RevFB","reversal_with_feedback","Reversal with feedback","model_based","model_based_revaluation","Model-based revaluation","psis",-6846.55279761095,75.1837037578938,107.253831775949,13693.1055952219,0,0.357927095962034
+"RevFB","reversal_with_feedback","Reversal with feedback","model_free","model_free_learning","Model-free learning","psis+moment_match",-6911.20091708479,75.0946788588911,100.854565681668,13822.4018341696,0,0.693324052764721
+"Rev","nominal_extinction","Nominal extinction","model_based","model_based_revaluation","Model-based revaluation","psis",-7010.00497587034,74.1398896083574,83.3776216463482,14020.0099517407,0,0.250884292742886
+"Rev","nominal_extinction","Nominal extinction","model_free","model_free_learning","Model-free learning","psis",-7072.96726852735,74.3166111074955,70.8473269046384,14145.9345370547,0,0.356379374022905

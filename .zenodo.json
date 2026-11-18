@@ -1,0 +1,67 @@
+{
+  "upload_type": "dataset",
+  "title": "Explicit knowledge modulates Pavlovian attentional biases: Data, code, and materials",
+  "description": "<p>Data, analysis code, computational models, results, and task materials for the manuscript \"Explicit knowledge modulates Pavlovian attentional biases\". The repository includes the trial-level data of Experiments 1, 2a, and 2b, the scripts and Stan models used for all analyses, the cached results and figures, and the Quarto source files of the manuscript and the Supplementary Material. See README.md for the structure of the repository and how to reproduce the analyses.</p>",
+  "creators": [
+    {
+      "name": "Garre-Frutos, Francisco",
+      "affiliation": "Autonomous University of Madrid",
+      "orcid": "0000-0001-9810-186X"
+    },
+    {
+      "name": "Martínez-López, Pablo",
+      "affiliation": "University of Málaga",
+      "orcid": "0009-0005-3628-1814"
+    },
+    {
+      "name": "Ariza, Adriana",
+      "affiliation": "University of Granada",
+      "orcid": "0009-0008-4809-9472"
+    },
+    {
+      "name": "Rey-Sáez, Ricardo",
+      "affiliation": "Autonomous University of Madrid",
+      "orcid": "0000-0001-6739-2035"
+    },
+    {
+      "name": "Luque, David",
+      "affiliation": "University of Málaga",
+      "orcid": "0000-0002-3457-9204"
+    },
+    {
+      "name": "Vadillo, Miguel A.",
+      "affiliation": "Universidad Nacional de Educación a Distancia (UNED)",
+      "orcid": "0000-0001-8421-816X"
+    },
+    {
+      "name": "González, Felisa",
+      "affiliation": "University of Granada",
+      "orcid": "0000-0001-8057-743X"
+    }
+  ],
+  "keywords": [
+    "attentional capture",
+    "Pavlovian learning",
+    "instructions",
+    "automaticity",
+    "reinforcement learning"
+  ],
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "10.31234/osf.io/uwge3",
+      "relation": "isSupplementTo",
+      "resource_type": "publication-preprint"
+    },
+    {
+      "identifier": "https://osf.io/g96yj",
+      "relation": "isDocumentedBy"
+    },
+    {
+      "identifier": "https://osf.io/nuaxg",
+      "relation": "isDerivedFrom"
+    }
+  ]
+}

@@ -314,6 +314,18 @@ return {
       end
 
       if authornote then
+        if authornote["equal-contribution-note"] then
+          local equal_contribution_paragraph = pandoc.Para(pandoc.Str(""))
+          equal_contribution_paragraph = extend_paragraph(equal_contribution_paragraph,
+            authornote["equal-contribution-note"])
+
+          if #equal_contribution_paragraph.content > 1 then
+            if not mask and not meta["suppress-author-note"] then
+              body:extend({ equal_contribution_paragraph })
+            end
+          end
+        end
+
         if authornote["status-changes"] then
           local second_paragraph = pandoc.Para(pandoc.Str(""))
           second_paragraph = extend_paragraph(second_paragraph,
@@ -530,6 +542,36 @@ return {
             abstractlinecounter = 2
           end
           meta.apaabstract:walk {
+            Para = function(p)
+              if abstractlinecounter == 1 then
+                abstractfirstparagraphdiv.content:extend({ p })
+                abstractfirstparagraphdiv.classes:insert("AbstractFirstParagraph")
+              else
+                abstractdiv.content:extend({ p })
+                if abstractlinecounter == 2 then
+                  abstractdiv.classes:insert("Abstract")
+                end
+              end
+
+              abstractlinecounter = abstractlinecounter + 1
+              return p, false
+            end,
+            Plain = function(p)
+              local para = pandoc.Para(p.content)
+
+              if abstractlinecounter == 1 then
+                abstractfirstparagraphdiv.content:extend({ para })
+                abstractfirstparagraphdiv.classes:insert("AbstractFirstParagraph")
+              else
+                abstractdiv.content:extend({ para })
+                if abstractlinecounter == 2 then
+                  abstractdiv.classes:insert("Abstract")
+                end
+              end
+
+              abstractlinecounter = abstractlinecounter + 1
+              return p, false
+            end,
             LineBlock = function(lb)
               lb:walk {
                 traverse = "topdown",

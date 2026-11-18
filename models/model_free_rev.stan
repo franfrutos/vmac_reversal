@@ -2,7 +2,7 @@ functions {
   // Signum function
   real signum(real x) {return x > 0 ? 1 : x < 0 ? -1 : 0; }
 
-  // Log-like por sujeto (sin shifter: change = no-op)
+  // Log-likelihood of subject j (without the shifter)
   real subject_bernoulli_logit_glm_lpmf(
     array[] int omission, array[] int singleton, array[] real reward,  
     array[] int valid, array[] int change, array[] int phase,  
@@ -22,7 +22,7 @@ functions {
     
     // Empty predictor matrix X
     matrix[I, 1] X;
-    // Initial alpha values for subject j (dos slots con el mismo valor inicial)
+    // Initial alpha values for subject j (same value for both singletons)
     vector[2] alpha_j = rep_vector(fmax(0.02, alpha_svalues[1]), 2);;
     // Empty vectors of valid omissions and predictors
     array[N_valid] int ommision_v_j;
@@ -34,7 +34,7 @@ functions {
       // Store alpha values
       X[i, 1] = alpha_j[singleton_j[i]];
 
-      // Sin shifter: cambio de fase = no-op
+      // No shifter: nothing happens at the phase change
       if (change_j[i] == 1) {
         // no-op
       }
@@ -122,10 +122,10 @@ data {
 }
 
 parameters {
-  // 1: intercept, 2: slope+, 3–4: LR1/LR2 (correladas), 5: alpha0
+  // 1: intercept, 2: slope+, 3–4: LR1/LR2 (correlated), 5: alpha0
   vector[5] mu;
   vector<lower=0>[5] sigma;
-  cholesky_factor_corr[2] L_phi;   // correlación entre LR1 y LR2
+  cholesky_factor_corr[2] L_phi;   // LR1–LR2 correlation
   matrix[5, J] Z_beta;
 }
 
@@ -135,16 +135,16 @@ transformed parameters {
   // 1) intercept
   beta_j[,1] = mu[1] + (Z_beta[1,] .* sigma[1])';
 
-  // 2) slope positivo
+  // 2) positive slope, bounded (0,10)
   beta_j[,2] = 10 * Phi_approx(mu[2] + (Z_beta[2,] .* sigma[2])');
 
-  // 3–4) LRs correlacionadas (latente bivariante → Phi_approx)
+  // 3–4) correlated LRs (bivariate latent → Phi_approx)
   beta_j[,3:4] = Phi_approx(
     rep_matrix(mu[3:4]', J) +
     (diag_pre_multiply(sigma[3:4], L_phi) * Z_beta[3:4,])'
   );
 
-  // 5) α inicial jerárquico (en (0,1))
+  // 5) hierarchical initial alpha (0,1)
   beta_j[,5] = Phi_approx(mu[5] + (Z_beta[5,] .* sigma[5])');
 }
 
@@ -158,14 +158,14 @@ model {
     target += subject_bernoulli_logit_glm_lpmf(
       Omission | singleton, reward, valid, change, phase,
       idx_start[j], I,
-      rep_vector(beta_j[j,5], 1),   // alpha inicial
-      beta_j[j,1:4]'                // sin shifter
+      rep_vector(beta_j[j,5], 1),   // alpha0
+      beta_j[j,1:4]'                // intercept, slope+, LR1, LR2
     );
   }
 }
 
 generated quantities {
-  // Correlación latente entre LR1 y LR2
+  // Latent LR1–LR2 correlation
   corr_matrix[2] rho_lr_raw = multiply_lower_tri_self_transpose(L_phi);
 
   vector[5] mu_beta;
@@ -173,21 +173,21 @@ generated quantities {
   mu_beta[2] = 10 * Phi(mu[2] / sqrt(1 + sigma[2]^2));
   mu_beta[3] = Phi(mu[3] / sqrt(1 + sigma[3]^2));
   mu_beta[4] = Phi(mu[4] / sqrt(1 + sigma[4]^2));
-  mu_beta[5] = Phi(mu[5] / sqrt(1 + sigma[5]^2)); // α inicial
+  mu_beta[5] = Phi(mu[5] / sqrt(1 + sigma[5]^2)); // alpha0
   
   vector[5] sigma_beta;
   sigma_beta[1] = sigma[1];
   sigma_beta[2] = 10 * sqrt(probit_var_exact(mu[2], sigma[2]));
   sigma_beta[3] = sqrt(probit_var_exact(mu[3], sigma[3]));
   sigma_beta[4] = sqrt(probit_var_exact(mu[4], sigma[4]));
-  sigma_beta[5] = sqrt(probit_var_exact(mu[5], sigma[5])); // α inicial
+  sigma_beta[5] = sqrt(probit_var_exact(mu[5], sigma[5])); // alpha0
 
-  // Correlación en escala transformada (probit)
+  // LR1–LR2 correlation on the transformed (probit) scale
   real rho_lr = probit_cov_exact(
     mu[3], sigma[3], mu[4], sigma[4], rho_lr_raw[1,2]
   ) / (sigma_beta[3] * sigma_beta[4]);
 
-  // Log-likelihood por trial válido
+  // Log-likelihood of each valid trial
   array[to_int(sum(valid))] real log_lik;
 
   // Posterior predictions
@@ -209,7 +209,7 @@ generated quantities {
       for (i in 1:I) {
         real X1 = alpha_j[singleton_j[i]];
 
-        // sin shifter: cambio = no-op
+        // No shifter: nothing happens at the phase change
         if (change_j[i] == 1) {
           // no-op
         }
@@ -234,7 +234,7 @@ generated quantities {
         y_rep[l, 2] = bernoulli_logit_rng(eta[2]);
         l += 1;
 
-        // Update RW dependiente de fase
+        // Rescorla–Wagner-style update with phase-dependent learning
         {
           real alpha_is  = alpha_j[singleton_j[i]];
           real lr        = beta_j[j, phase_j[i] + 2]; // 1->3, 2->4

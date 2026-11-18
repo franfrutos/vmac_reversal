@@ -14,6 +14,8 @@ setwd(here::here())
 
 if (!exists("report_exclusions")) {
   report_exclusions <- function(d, acc) {
+    # Only the trials of the task (no practice or awareness test)
+    d <- d[which(d$Phase %in% c("Acquisition", "Reversal")), ]
     incorrect <- (1 - nrow(d[which(d$correct == 1 & !d$ID %in% acc), ]) /
       nrow(d[which(!d$ID %in% acc), ])) * 100
     outliers <- (1 - nrow(d[which(d$correct == 1 & !d$ID %in% acc &
@@ -26,6 +28,7 @@ if (!exists("report_exclusions")) {
         "\nOutliers RTs: ", round(outliers, 2), "%"
       )
     )
+    invisible(list(incorrect = incorrect, outliers = outliers))
   }
 }
 
@@ -65,7 +68,7 @@ raw %>%
 
 # Report trial exclusions:
 print("Experiment 1:")
-report_exclusions(raw, acc_ex)
+exclusions_e1 <- report_exclusions(raw, acc_ex)
 
 # Experiments 2a and 2b ----
 raw2 <- read.csv("Input/data_e2.csv") %>%
@@ -103,10 +106,10 @@ raw2 %>%
 
 # Report trial exclusions for experiment 2A and 2B:
 print("Experiment 2A:")
-report_exclusions(raw2[which(raw2$Experiment == "A"),], acc_ex2)
+exclusions_e2a <- report_exclusions(raw2[which(raw2$Experiment == "A"),], acc_ex2)
 
 print("Experiment 2B:")
-report_exclusions(raw2[which(raw2$Experiment == "B"),], acc_ex2)
+exclusions_e2b <- report_exclusions(raw2[which(raw2$Experiment == "B"),], acc_ex2)
 
 
 # Merged dataset ----

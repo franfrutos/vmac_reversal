@@ -1,0 +1,57 @@
+---
+# Preprint of the manuscript in journal mode (two columns). The text and metadata come from
+# vmac_reversal_manuscript.qmd, so only the format is set here, at the end of this file
+format: apaquarto-pdf
+---
+
+{{< include vmac_reversal_manuscript.qmd >}}
+
+---
+# Settings placed after the manuscript replace those of vmac_reversal_manuscript.qmd
+journal: "Preprint"
+volume: "This version has not been peer reviewed"
+copyrightnotice: "2026 The Authors"
+# Non-breaking spaces, so that no name is split across lines
+authorsdisplay: "Francisco Garre-Frutos\\*, Pablo Martínez-López\\*, Adriana Ariza, Ricardo Rey-Sáez, David Luque, Miguel A. Vadillo, Felisa González"
+# The header-includes of the manuscript lose their backslashes when included
+header-includes: \raggedbottom
+# With the CRediT statement, the author note is longer than a column and cannot be placed
+suppress-credit-statement: true
+
+format:
+  apaquarto-pdf:
+    documentmode: jou
+    citeproc: false
+    # latexmk loops with the column balancing of journal mode
+    pdf-engine: xelatex
+    keep-tex: true
+    filters:
+      - at: pre-ast
+        path: scripts/preprint.lua
+    include-in-header:
+      text: |
+        \usepackage{array}
+        \usepackage{float}
+        \usepackage{threeparttable}
+        \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+        % Spacing around figures, and better line breaks in narrow columns
+        \makeatletter
+        \setlength{\@fptop}{0pt}
+        \setlength{\@fpsep}{12pt}
+        \setlength{\@fpbot}{0pt plus 1fil}
+        \setlength{\@dblfptop}{0pt}
+        \setlength{\@dblfpsep}{12pt}
+        \setlength{\@dblfpbot}{0pt plus 1fil}
+        \makeatother
+        \setlength{\textfloatsep}{12pt}
+        \setlength{\intextsep}{12pt}
+        % The author note is a float at the bottom of the first column, and it is longer than
+        % the default 30% of the page, which sends it (and every figure after it) to the end
+        \renewcommand{\bottomfraction}{0.9}
+        \renewcommand{\topfraction}{0.9}
+        \renewcommand{\dbltopfraction}{0.9}
+        \renewcommand{\textfraction}{0.07}
+        \renewcommand{\floatpagefraction}{0.8}
+        \renewcommand{\dblfloatpagefraction}{0.8}
+        \usepackage{microtype}
+---

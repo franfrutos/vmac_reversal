@@ -1,0 +1,3 @@
+"group","group_id","group_label","reference_model","comparison_model","comparison_row","elpd_diff","se_diff","p_superiority"
+"RevFB","reversal_with_feedback","Reversal with feedback","model_based","model_free","model2",64.6481194738465,12.5510693385911,0.999999870315105
+"Rev","nominal_extinction","Nominal extinction","model_based","model_free","model2",62.9622926569867,11.1486334234262,0.999999991861744

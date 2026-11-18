@@ -1,0 +1,60 @@
+R version 4.3.1 (2023-06-16 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 26300)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=Spanish_Spain.utf8  LC_CTYPE=Spanish_Spain.utf8   
+[3] LC_MONETARY=Spanish_Spain.utf8 LC_NUMERIC=C                  
+[5] LC_TIME=Spanish_Spain.utf8    
+
+time zone: Europe/Madrid
+tzcode source: internal
+
+attached base packages:
+[1] grid      stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] papaja_0.1.3           tinylabels_0.2.4       rapidsplithalf_0.4    
+ [4] patchwork_1.3.0        ggpubr_0.6.0           cowplot_1.1.3         
+ [7] sjPlot_2.8.16          hypr_0.2.7             lmerTest_3.2-1        
+[10] here_1.0.2             pacman_0.5.1           effectsize_0.8.9      
+[13] emmeans_1.10.5         afex_1.4-1             lme4_1.1-34           
+[16] Matrix_1.6-1.1         tibble_3.2.1           tidyr_1.3.0           
+[19] Rmisc_1.5.1            plyr_1.8.9             lattice_0.22-6        
+[22] marginaleffects_0.32.0 ggplot2_3.5.1          ggthemes_4.2.4        
+[25] Hmisc_5.2-0            dplyr_1.1.4           
+
+loaded via a namespace (and not attached):
+ [1] Rdpack_2.6.4        gridExtra_2.3       rlang_1.3.0        
+ [4] magrittr_2.0.3      snakecase_0.11.1    compiler_4.3.1     
+ [7] systemfonts_1.2.2   vctrs_0.7.3         reshape2_1.4.4     
+[10] stringr_1.6.0       pkgconfig_2.0.3     fastmap_1.2.0      
+[13] backports_1.5.0     labeling_0.4.3      rmarkdown_2.31     
+[16] pracma_2.4.4        nloptr_2.0.3        ragg_1.2.6         
+[19] purrr_1.2.2         xfun_0.52           sjmisc_2.8.10      
+[22] ggeffects_1.7.2     broom_1.0.7         parallel_4.3.1     
+[25] cluster_2.1.6       R6_2.6.1            stringi_1.8.7      
+[28] RColorBrewer_1.1-3  car_3.1-2           boot_1.3-31        
+[31] rpart_4.1.23        numDeriv_2016.8-1.1 estimability_1.5.1 
+[34] iterators_1.0.14    Rcpp_1.0.13         knitr_1.51         
+[37] base64enc_0.1-3     parameters_0.23.0   splines_4.3.1      
+[40] nnet_7.3-19         tidyselect_1.2.1    rstudioapi_0.17.1  
+[43] abind_1.4-8         codetools_0.2-20    doParallel_1.0.17  
+[46] sjlabelled_1.2.0    withr_3.0.2         bayestestR_0.15.0  
+[49] coda_0.19-4.1       evaluate_1.0.1      foreign_0.8-87     
+[52] pillar_1.10.2       carData_3.0-5       checkmate_2.3.2    
+[55] foreach_1.5.2       reformulas_0.4.4    insight_1.5.2      
+[58] generics_0.1.4      rprojroot_2.1.1     scales_1.4.0       
+[61] minqa_1.2.6         xtable_1.8-4        glue_1.6.2         
+[64] tools_4.3.1         data.table_1.17.2   ggsignif_0.6.4     
+[67] mvtnorm_1.3-1       rbibutils_2.4       datawizard_0.13.0  
+[70] colorspace_2.1-1    nlme_3.1-166        performance_0.12.4 
+[73] htmlTable_2.4.3     Formula_1.2-5       cli_3.6.6          
+[76] textshaping_0.3.7   sjstats_0.19.0      gtable_0.3.6       
+[79] rstatix_0.7.2       digest_0.6.33       htmlwidgets_1.6.4  
+[82] farver_2.1.2        htmltools_0.5.8.1   lifecycle_1.0.5    
+[85] MASS_7.3-60        

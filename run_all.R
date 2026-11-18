@@ -51,5 +51,8 @@ if (force_comp || !file.exists("output/models/model_comparison_results.rds")) {
 message("Running posterior predictive plots...")
 source("scripts/posterior_predictions.R", local = FALSE)
 
+# Versions of R and packages used to generate the results
+writeLines(capture.output(sessionInfo()), "output/session_info.txt")
+
 message("Pipeline completed.")
 

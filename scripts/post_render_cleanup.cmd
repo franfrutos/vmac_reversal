@@ -1,35 +1,23 @@
 @echo off
 setlocal
 
-REM ------------------------------------------------------------------------------
-REM Author: Francisco Garre-Frutos
-REM ------------------------------------------------------------------------------
-
 set "ROOT=%~dp0.."
-set "MANUSCRIPT_DIR=%ROOT%\output\manuscript"
+set "TARGET=%ROOT%\output\manuscript"
 
-if not exist "%MANUSCRIPT_DIR%" (
-  mkdir "%MANUSCRIPT_DIR%"
+if not exist "%TARGET%" (
+  mkdir "%TARGET%"
 )
 
-for %%F in (
-  "%ROOT%\*.aux"
-  "%ROOT%\*.bbl"
-  "%ROOT%\*.bcf"
-  "%ROOT%\*.blg"
-  "%ROOT%\*.fdb_latexmk"
-  "%ROOT%\*.fls"
-  "%ROOT%\*.log"
-  "%ROOT%\*.out"
-  "%ROOT%\*.run.xml"
-  "%ROOT%\*.synctex.gz"
-  "%ROOT%\*.tex"
-  "%ROOT%\*.toc"
-  "%ROOT%\*.xdv"
-) do (
-  if exist "%%~fF" (
-    move /Y "%%~fF" "%MANUSCRIPT_DIR%" >nul
+for %%B in (vmac_reversal_manuscript vmac_reversal_preprint vmac_reversal_supplementary) do (
+  for %%E in (aux log tex xdv fdb_latexmk fls knit.md) do (
+    if exist "%ROOT%\%%B.%%E" (
+      move /Y "%ROOT%\%%B.%%E" "%TARGET%\" >nul
+    )
+  )
+  if exist "%ROOT%\%%B_files" (
+    move /Y "%ROOT%\%%B_files" "%TARGET%\" >nul
   )
 )
 
 endlocal
+exit /b 0

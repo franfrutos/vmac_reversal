@@ -3,6 +3,7 @@
 ## -----------------------------------------------------------------------------
 
 source("scripts/functions.R")
+source("scripts/load_data.R") # Data of Experiments 1, 2a, and 2b, for the within-block analysis
 
 required_packages <- c(
   "dplyr", "lme4", "lmerTest", "marginaleffects", "hypr", "sjPlot",
@@ -26,8 +27,9 @@ invisible(lapply(required_packages, library, character.only = TRUE))
 
 ensure_project_dirs()
 
-eyeD <- read.csv("Input/df_le2.csv") %>% 
-  filter(fixationTimeout != 1, trialPropGoodSamples > .25)
+eyeD <- read.csv("Input/df_le2.csv") %>%
+  filter(fixationTimeout != 1, trialPropGoodSamples > .25) %>%
+  select(-group) # Not used (groups come from revGroup), and marginaleffects does not allow this name
 
 group_df <- read.csv("Input/summary_Le.csv") %>% mutate(ID = subNum)
 
@@ -279,7 +281,7 @@ plotLe_preds <- ggplot(data = TestComp,
   
   scale_y_continuous(
     breaks = seq(-30, 30, by = 10), 
-    limits = c(-20, 30)  # Límites ajustados a -30 a 30 (sin multiplicar)
+    limits = c(-20, 30)
   ) +
   labs(
     y = expression(atop(bold("VMAC effect"), bold("(distractor difference %)"))),
@@ -312,14 +314,14 @@ combined_d <- bind_rows(
   raw %>%
     filter(Phase == "Reversal") %>% 
     group_by(ID, Block_num) %>%
-    mutate(trial = 1:n()) %>%
-    filter_data(., f.absent = T) %>% 
+    dplyr::mutate(trial = 1:n()) %>% # plyr (loaded with Rmisc) masks mutate()
+    filter_data(., f.absent = T) %>%
     mutate(Experiment = "1") %>% select(ID, rt, Singleton, trial, Block_num, Experiment) %>%
     ungroup(),
   raw2 %>%
     filter(Phase == "Reversal") %>%
     group_by(ID, Block_num) %>%
-    mutate(trial = 1:n()) %>%
+    dplyr::mutate(trial = 1:n()) %>%
     filter_data(., f.absent = T, experiment = "e2") %>%
     select(ID, rt, Singleton, trial, Block_num, Experiment) %>%
     ungroup()

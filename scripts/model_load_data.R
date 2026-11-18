@@ -13,15 +13,11 @@ p_load(
   Rmisc
 )
 
-source("scripts/model_functions.R")
+source("scripts/model_functions.R") # create_epochs()
 
-library(dplyr)
-library(Rmisc)  # para summarySEwithin
-# Suponemos que create_epochs() ya está definido en tu entorno
-
-# ———————— Cargar datos y asignar grupos ————————
-d <- read.csv("Input/modeling/le2023_e2.csv")
-group_df <- read.csv("Input/modeling/summary_Le.csv") %>%
+# Loading data and reversal groups of Le et al. (2024) ----
+d <- read.csv("Input/df_le2.csv")
+group_df <- read.csv("Input/summary_Le.csv") %>%
   mutate(ID = subNum)
 
 d <- left_join(d, group_df[, c("ID", "revGroup")], by = "ID") %>%
@@ -34,6 +30,8 @@ d <- left_join(d, group_df[, c("ID", "revGroup")], by = "ID") %>%
   mutate(
     reward       = case_when(
       phase == 2 ~trialPay / 500,
+      # No reward delivered (omission or slow response)
+      phase == 3 & Group == "RevFB" & trialPay == 0 ~ 0,
       phase == 3 & Group == "RevFB" & distractType == 1~10/500,
       phase == 3 & Group == "RevFB" & distractType == 2~500/500,
       phase == 3 & (Group =="Rev" | Group == "Control")~0
@@ -47,7 +45,7 @@ d <- left_join(d, group_df[, c("ID", "revGroup")], by = "ID") %>%
   ungroup()
 
 
-# ———————— Preparar listas vacías ————————
+# Data for Stan and for the plots, by group ----
 dStan  <- list()
 dPlots <- list()
 group_metadata <- tibble::tribble(
@@ -56,11 +54,10 @@ group_metadata <- tibble::tribble(
   "RevFB", "reversal_with_feedback", "Reversal with feedback"
 )
 
-# ———————— Iterar sobre cada grupo ————————
 groups_to_process <- c("RevFB", "Rev")
 
 for (grp in groups_to_process) {
-  # 1) Filtrar y reenumerar IDs
+  # IDs from 1 to J
   d_grp <- d %>%
     filter(Group == grp) %>%
     mutate(ID = as.integer(as.factor(ID))) %>%
@@ -80,42 +77,9 @@ for (grp in groups_to_process) {
     Omission  = d_grp$omissionTrial
   )
 
-  # # IDs consecutivos 1..J
-  # subj_idx <- as.integer(factor(d_grp$ID))
-  # 
-  # # ensayos válidos (tu misma lógica)
-  # valid_vec <- ifelse(d_grp$timeout != 1 & d_grp$trialPropGoodSamples > 0.25, 1L, 0L)
-  # 
-  # # filtro para Omission (solo válidos, en orden)
-  # Omission_valid <- as.integer(d_grp$omissionTrial[valid_vec == 1L])
-  # 
-  # # Singleton 1/2 y con nombre que espera Stan
-  # Singleton_vec <- as.integer(d_grp$distractType)  # asegúrate que es 1/2
-  # 
-  # # phase en 1/2 (¡no restes 1!)
-  # phase_vec <- as.integer(d_grp$phase) -1            # 1 = adquisición, 2 = reversión
-  # 
-  # # trial como real (centrado fuera si quieres)
-  # trial = (d_grp$trial - mean(d_grp$trial)) / (max(d$trial) - min(d$trial))
-  # 
-  # dat <- list(
-  #   N         = nrow(d_grp),
-  #   N_valid   = sum(valid_vec),
-  #   J         = length(unique(subj_idx)),
-  #   subj      = subj_idx,
-  #   trial     = trial,
-  #   Singleton = Singleton_vec,
-  #   reward    = as.numeric(d_grp$reward),
-  #   valid     = valid_vec,
-  #   change    = as.integer(d_grp$change_phase),
-  #   phase     = phase_vec,
-  #   Omission  = Omission_valid
-  # )
-
-  
   dStan[[grp]] <- dat
-  
-  # 3) Construir resumen para plots
+
+  # Proportion of omissions by epoch, for the plots:
   d_plot_grp <- d_grp %>%
     mutate(
       trial = rep(1:(384 + 192), length.out = nrow(.)),

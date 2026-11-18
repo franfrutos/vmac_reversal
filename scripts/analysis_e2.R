@@ -88,11 +88,12 @@ f_2A_l2_log <-
     control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
     data = d2[d2$Phase == "Acquisition" & d2$Experiment == "A", ]
   )
-anova(f_2A_l2,f_2A_l2_log)
+aic_2a_acq <- anova(f_2A_l2,f_2A_l2_log)
+aic_2a_acq
 summary(f_2A_l2_log)
 
 # Selected model predictions
-predictions(
+pred_2a_acq <- predictions(
   f_2A_l2_log,
   newdata = datagrid(
     Singleton = unique,
@@ -105,7 +106,7 @@ predictions(
 )
 
 # VMAC and AC effects:
-avg_comparisons(
+comp_2a_acq <- avg_comparisons(
   f_2A_l2_log,
   variables = list(Singleton = "revsequential"),
   newdata = datagrid(
@@ -140,11 +141,12 @@ f_2A_rev2_log <-
     control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
     data = d2[d2$Phase == "Reversal" & d2$Experiment == "A", ]
   )
-anova(f_2A_rev2, f_2A_rev2_log)
+aic_2a_rev <- anova(f_2A_rev2, f_2A_rev2_log)
+aic_2a_rev
 summary(f_2A_rev2_log)
 
 # Selected model predictions
-predictions(
+pred_2a_rev <- predictions(
   f_2A_rev2_log,
   newdata = datagrid(
     Singleton = unique,
@@ -157,7 +159,7 @@ predictions(
 )
 
 # VMAC and AC effects:
-avg_comparisons(
+comp_2a_rev <- avg_comparisons(
   f_2A_rev2_log,
   variables = list(Singleton = "revsequential"),
   newdata = datagrid(
@@ -168,6 +170,20 @@ avg_comparisons(
   re.form = NA,
   comparison = \(hi, lo) exp(hi + (sigma(f_2A_rev2_log) ^ 2) / 2) - exp(lo + (sigma(f_2A_rev2_log) ^ 2) / 2)
 )
+
+# VMAC in the last two blocks of the reversal stage:
+comp_2a_rev_last <- avg_comparisons(
+  f_2A_rev2_log,
+  variables = list(Singleton = "revsequential"),
+  newdata = datagrid(
+    Singleton = unique,
+    Block_num = 23:24,
+    ID = NA
+  ),
+  re.form = NA,
+  comparison = \(hi, lo) exp(hi + (sigma(f_2A_rev2_log) ^ 2) / 2) - exp(lo + (sigma(f_2A_rev2_log) ^ 2) / 2)
+)
+comp_2a_rev_last
 
 # Accuracy----
 ## Acquisition----
@@ -333,11 +349,12 @@ f_2B_l2_log <-
     control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
     data = d2[d2$Phase == "Acquisition" & d2$Experiment == "B", ]
   )
-anova(f_2B_l2,f_2B_l2_log)
+aic_2b_acq <- anova(f_2B_l2,f_2B_l2_log)
+aic_2b_acq
 summary(f_2B_l2_log)
 
 # Selected model predictions
-predictions(
+pred_2b_acq <- predictions(
   f_2B_l2_log,
   newdata = datagrid(
     Singleton = unique,
@@ -350,7 +367,7 @@ predictions(
 )
 
 # VMAC and AC effects:
-avg_comparisons(
+comp_2b_acq <- avg_comparisons(
   f_2B_l2_log,
   variables = list(Singleton = "revsequential"),
   newdata = datagrid(
@@ -392,11 +409,12 @@ f_2B_rev3_log <-
     control = lmerControl(optimizer = 'bobyqa', optCtrl=list(maxfun=1e5)),
     data = d2[d2$Phase == "Reversal" & d2$Experiment == "B", ]
   )
-anova(f_2B_rev3, f_2B_rev3_log)
+aic_2b_rev <- anova(f_2B_rev3, f_2B_rev3_log)
+aic_2b_rev
 summary(f_2B_rev3_log)
 
 # Selected model predictions
-predictions(
+pred_2b_rev <- predictions(
   f_2B_rev3_log,
   newdata = datagrid(
     Singleton = unique,
@@ -409,7 +427,7 @@ predictions(
 )
 
 # VMAC and AC effects:
-avg_comparisons(
+comp_2b_rev <- avg_comparisons(
   f_2B_rev3_log,
   variables = list(Singleton = "revsequential"),
   newdata = datagrid(
@@ -742,13 +760,14 @@ plot2A_compREV <- ggplot(data = pdata_2Amod_rev,
     legend.position = "none"
   )
 
-# Writting conditional effect 
-subplot_left <- ggplotGrob(plot2A_compACQ)
-subplot_right <- ggplotGrob(plot2A_compREV)
+# Writting conditional effect (aligned, so both insets have the same panel size)
+insets <- cowplot::align_plots(plot2A_compACQ, plot2A_compREV, align = "hv", axis = "tblr")
+subplot_left <- insets[[1]]
+subplot_right <- insets[[2]]
 
 final_plot_2A <- ggdraw(plot2A_predsRT) +
-  draw_plot(subplot_left, x = 0.3, y = .525, width = 0.175, height = 0.275) +
-  draw_plot(subplot_right, x = 0.565, y = .525, width = 0.175, height = 0.275)
+  draw_plot(subplot_left, x = 0.3, y = .525, width = 0.19, height = 0.275) +
+  draw_plot(subplot_right, x = 0.565, y = .525, width = 0.19, height = 0.275)
 
 
 ###Experiment 2b----
@@ -853,13 +872,14 @@ plot2B_compREV <- ggplot(data = pdata_2Bmod_rev,
     legend.position = "none"
   )
 
-# Writting conditional effect 
-subplot_left <- ggplotGrob(plot2B_compACQ)
-subplot_right <- ggplotGrob(plot2B_compREV)
+# Writting conditional effect (aligned, so both insets have the same panel size)
+insets <- cowplot::align_plots(plot2B_compACQ, plot2B_compREV, align = "hv", axis = "tblr")
+subplot_left <- insets[[1]]
+subplot_right <- insets[[2]]
 
 final_plot_2B <- ggdraw(plot2B_predsRT) +
-  draw_plot(subplot_left, x = 0.3, y = .57, width = 0.175, height = 0.25) +
-  draw_plot(subplot_right, x = 0.565, y = .57, width = 0.175, height = 0.25)
+  draw_plot(subplot_left, x = 0.3, y = .57, width = 0.19, height = 0.25) +
+  draw_plot(subplot_right, x = 0.565, y = .57, width = 0.19, height = 0.25)
 
 ggarrange(
   final_plot_2A, 
@@ -971,7 +991,8 @@ avg_comparisons(
   comparison = \(hi, lo) exp(hi + (sigma(f_d) ^ 2) / 2) - exp(lo + (sigma(f_d) ^ 2) / 2),
 )
 
-# Reliability: 
+# Reliability:
+set.seed(2025) # Random splits
 # d-prime
 (splithalf_dprimes <- rapidsplit(data = d_aw[d_aw$Experiment == "B",], 
                                 subjvar = "ID", 
@@ -981,28 +1002,24 @@ avg_comparisons(
                                 splits = 5000))
 
 # VMAC effect: 
-rel <- multi.s::splith(
-  outcome = "rt",
-  data = ranef_df[ranef_df$Phase == "Reversal" & ranef_df$Experiment == "B", ],
-  permutations = 5e3,
-  variable = "Singleton",
-  subject = "ID",
-  include_block = F,
-  block = "Epoch",
-  average = "mean"
-)$final_estimates
+(rel <- rapidsplit(data = ranef_df[ranef_df$Phase == "Reversal" & ranef_df$Experiment == "B", ],
+                   subjvar = "ID",
+                   aggvar = "rt",
+                   diffvars = "Singleton", # High minus low
+                   aggfunc = "means",
+                   splits = 5000))
 
 
 # Expected attenuation
-expected_attenuation <- (1 - sqrt(rel$spearmanbrown * splithalf_dprimes$r)) * 100
+expected_attenuation <- (1 - sqrt(rel$r * splithalf_dprimes$r)) * 100
 expected_attenuation
 
 # Maximal expected attenuation
-expected_attenuation_low <- (1 - sqrt(rel$SB_low * splithalf_dprimes$ci[1])) * 100
+expected_attenuation_low <- (1 - sqrt(rel$ci[1] * splithalf_dprimes$ci[1])) * 100
 expected_attenuation_low
 
 # Maximal expected attenuation
-expected_attenuation_high <- (1 - sqrt(rel$SB_high * splithalf_dprimes$ci[2])) * 100
+expected_attenuation_high <- (1 - sqrt(rel$ci[2] * splithalf_dprimes$ci[2])) * 100
 expected_attenuation_high
 
 # Plot:
@@ -1092,7 +1109,7 @@ f_combined <-
 summary(f_combined)
 f_combined_rt <- f_combined
 
-predictions(
+pred_combined <- predictions(
   f_combined,
   newdata = datagrid(
     Experiment = unique,
@@ -1175,13 +1192,13 @@ fig_4 <- ggarrange(
     roc_plot, d_plot,
     labels = c("A", "B"),
     ncol = 2,
-    widths = c(1, 1),  # más ancho para roc_plot
+    widths = c(1, 1),
     align = "hv"
   ),
   comp_plot,
   labels = c("", "C"),
   ncol = 1,
-  heights = c(1, 1.3)  # puedes aumentar si comp_plot es más denso
+  heights = c(1, 1.3)
 )
 
 ggsave(
@@ -1254,6 +1271,43 @@ save_analysis_objects(
   figure_4 = fig_4,
   roc_plot = roc_plot,
   awareness_plot = d_plot,
-  comparison_plot = comp_plot
+  comparison_plot = comp_plot,
+  # Values reported in the text
+  reported = list(
+    demographics = descriptive_e2 %>%
+      dplyr::group_by(Experiment) %>%
+      dplyr::summarise(
+        n = dplyr::n(),
+        females = sum(Sexo == 2),
+        age_min = min(Edad),
+        age_max = max(Edad),
+        age_mean = mean(Edad),
+        age_sd = sd(Edad),
+        malaga = sum(University == 0),
+        .groups = 'drop'
+      ) %>%
+      as.data.frame(),
+    exclusions = list(e2a = exclusions_e2a, e2b = exclusions_e2b),
+    aic_diff = c(
+      e2a_acquisition = abs(diff(aic_2a_acq$AIC)),
+      e2a_reversal = abs(diff(aic_2a_rev$AIC)),
+      e2b_acquisition = abs(diff(aic_2b_acq$AIC)),
+      e2b_reversal = abs(diff(aic_2b_rev$AIC))
+    ),
+    predictions = list(
+      e2a_acquisition = as.data.frame(pred_2a_acq),
+      e2a_reversal = as.data.frame(pred_2a_rev),
+      e2b_acquisition = as.data.frame(pred_2b_acq),
+      e2b_reversal = as.data.frame(pred_2b_rev),
+      combined_by_experiment = as.data.frame(pred_combined)
+    ),
+    comparisons = list(
+      e2a_acquisition = as.data.frame(comp_2a_acq),
+      e2a_reversal = as.data.frame(comp_2a_rev),
+      e2a_reversal_last_two_blocks = as.data.frame(comp_2a_rev_last),
+      e2b_acquisition = as.data.frame(comp_2b_acq),
+      e2b_reversal = as.data.frame(comp_2b_rev)
+    )
+  )
 )
 

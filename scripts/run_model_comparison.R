@@ -11,6 +11,8 @@ p_load(cmdstanr, posterior, loo, dplyr, tibble)
 
 source("scripts/model_load_data.R")
 
+models_dir <- "output/models"
+
 group_metadata <- tibble::tribble(
   ~group_code, ~group_id, ~group_label,
   "Rev", "nominal_extinction", "Nominal extinction",
@@ -33,8 +35,11 @@ model_files <- list(
   model_free = "models/model_free_rev.stan"
 )
 
+# Each session compiles its own copy, so groups can be fitted in parallel
+stan_dir <- file.path(tempdir(), "stan_models")
+dir.create(stan_dir, showWarnings = FALSE)
 stan_models <- lapply(model_files, function(path) {
-  cmdstan_model(path, force_recompile = TRUE)
+  cmdstan_model(path, dir = stan_dir, force_recompile = TRUE)
 })
 
 sampling_args <- list(
@@ -44,6 +49,7 @@ sampling_args <- list(
   iter_warmup = 2000,
   iter_sampling = 2500,
   adapt_delta = 0.95,
+  sig_figs = 18, # Needed for moment matching
   refresh = 100
 )
 
@@ -81,7 +87,10 @@ compute_loo_safe <- function(fit) {
 
   mm_loo <- tryCatch(
     fit$loo(save_psis = TRUE, moment_match = TRUE),
-    error = function(e) NULL
+    error = function(e) {
+      message("Moment matching failed: ", conditionMessage(e))
+      NULL
+    }
   )
 
   if (!is.null(mm_loo)) {
@@ -113,25 +122,52 @@ extract_loo_summary <- function(group_name, model_name, loo_result, method_name)
   )
 }
 
-target_groups <- names(dStan)
+# Parameters kept to check convergence and for the model recovery
+param_variables <- c("lp__", "mu", "sigma", "L_phi", "beta_j")
+
+summarise_convergence <- function(group_name, model_name, fit, param_draws) {
+  diagnostics <- fit$diagnostic_summary(quiet = TRUE)
+  convergence <- summarise_draws(param_draws, "rhat", "ess_bulk", "ess_tail")
+
+  tibble(
+    group = group_name,
+    model = model_name,
+    max_rhat = max(convergence$rhat, na.rm = TRUE),
+    min_ess_bulk = min(convergence$ess_bulk, na.rm = TRUE),
+    min_ess_tail = min(convergence$ess_tail, na.rm = TRUE),
+    n_divergent = sum(diagnostics$num_divergent),
+    n_max_treedepth = sum(diagnostics$num_max_treedepth),
+    min_ebfmi = min(diagnostics$ebfmi)
+  )
+}
+
+# Groups to fit: all by default, or those given as arguments (e.g., RevFB).
+# With "combine", the saved groups are only combined
+args <- commandArgs(trailingOnly = TRUE)
+target_groups <- if (length(args) > 0) setdiff(args, "combine") else names(dStan)
+stopifnot(all(target_groups %in% names(dStan)))
 target_models <- names(stan_models)
 
-fits <- list()
-loos <- list()
-summaries <- list()
-comparisons <- list()
-posterior_predictions <- list()
-posterior_vmac <- list()
+group_file <- function(group_name) {
+  file.path(models_dir, sprintf("model_comparison_%s.rds", group_name))
+}
 
 for (group_name in target_groups) {
-  fits[[group_name]] <- list()
-  loos[[group_name]] <- list()
   group_row <- group_metadata[group_metadata$group_code == group_name, ]
+  group_results <- list(
+    loos = list(),
+    loo_summary = list(),
+    posterior_predictions = list(),
+    posterior_vmac = list(),
+    convergence = list(),
+    param_draws = list()
+  )
 
   for (model_name in target_models) {
     model_row <- model_metadata[model_metadata$model_code == model_name, ]
     message("Fitting ", group_row$group_label, " (", group_name, ") / ", model_row$model_label)
 
+    set.seed(2025) # Initial values
     fit <- do.call(
       stan_models[[model_name]]$sample,
       c(
@@ -144,12 +180,16 @@ for (group_name in target_groups) {
     )
 
     loo_info <- compute_loo_safe(fit)
+    loo_info$loo$psis_object <- NULL # Not used, and very large
+    param_draws <- fit$draws(variables = param_variables)
 
-    fits[[group_name]][[model_name]] <- fit
-    loos[[group_name]][[model_name]] <- loo_info$loo
-    summaries[[paste(group_name, model_name, sep = "__")]] <-
+    group_results$loos[[model_name]] <- loo_info$loo
+    group_results$loo_summary[[model_name]] <-
       extract_loo_summary(group_name, model_name, loo_info$loo, loo_info$method)
-    posterior_predictions[[paste(group_name, model_name, sep = "__")]] <-
+    group_results$convergence[[model_name]] <-
+      summarise_convergence(group_name, model_name, fit, param_draws)
+    group_results$param_draws[[model_name]] <- param_draws
+    group_results$posterior_predictions[[model_name]] <-
       get_PPC_epochsY(
         fit = fit,
         group_size = dStan[[group_name]]$I,
@@ -166,7 +206,7 @@ for (group_name in target_groups) {
         Singleton = ifelse(Distractor == "Distractor1", "High", "Low")
       ) %>%
       left_join(phase_lookup, by = "Epoch")
-    posterior_vmac[[paste(group_name, model_name, sep = "__")]] <-
+    group_results$posterior_vmac[[model_name]] <-
       get_PPC_diff_epochs(
         fit = fit,
         group_size = dStan[[group_name]]$I,
@@ -182,19 +222,36 @@ for (group_name in target_groups) {
         model_label = model_row$model_label
       ) %>%
       left_join(phase_lookup, by = "Epoch")
+
+    rm(fit)
+    gc()
   }
 
-  if (all(c("model_based", "model_free") %in% names(loos[[group_name]]))) {
-    comparisons[[group_name]] <- loo_compare(
-      loos[[group_name]][["model_based"]],
-      loos[[group_name]][["model_free"]]
-    )
-  }
+  group_results$comparison <- loo_compare(
+    group_results$loos[["model_based"]],
+    group_results$loos[["model_free"]]
+  )
+
+  saveRDS(group_results, group_file(group_name))
 }
 
-loo_summary <- bind_rows(summaries)
-posterior_predictions_df <- bind_rows(posterior_predictions)
-posterior_vmac_df <- bind_rows(posterior_vmac)
+# Combined results ----
+available_groups <- names(dStan)[file.exists(group_file(names(dStan)))]
+results <- setNames(lapply(available_groups, function(group_name) {
+  readRDS(group_file(group_name))
+}), available_groups)
+
+collect_results <- function(element) {
+  bind_rows(lapply(results, function(group_results) bind_rows(group_results[[element]])))
+}
+
+loo_summary <- collect_results("loo_summary")
+posterior_predictions_df <- collect_results("posterior_predictions")
+posterior_vmac_df <- collect_results("posterior_vmac")
+convergence_summary <- collect_results("convergence")
+loos <- lapply(results, function(group_results) group_results$loos)
+comparisons <- lapply(results, function(group_results) group_results$comparison)
+param_draws <- lapply(results, function(group_results) group_results$param_draws)
 
 comparison_summary <- bind_rows(lapply(names(comparisons), function(group_name) {
   comparison_df <- as.data.frame(comparisons[[group_name]])
@@ -226,41 +283,49 @@ comparison_summary <- bind_rows(lapply(names(comparisons), function(group_name) 
 
 saveRDS(
   list(
-    fits = fits,
     loos = loos,
     loo_summary = loo_summary,
     comparisons = comparisons,
     comparison_summary = comparison_summary,
+    convergence = convergence_summary,
+    param_draws = param_draws,
     posterior_predictions = posterior_predictions_df,
     posterior_vmac = posterior_vmac_df
   ),
-  file = "output/models/model_comparison_results.rds"
+  file = file.path(models_dir, "model_comparison_results.rds")
 )
 
 write.csv(
   loo_summary,
-  file = "output/models/model_loo_summary.csv",
+  file = file.path(models_dir, "model_loo_summary.csv"),
   row.names = FALSE
 )
 
 write.csv(
   comparison_summary,
-  file = "output/models/model_comparison_summary.csv",
+  file = file.path(models_dir, "model_comparison_summary.csv"),
+  row.names = FALSE
+)
+
+write.csv(
+  convergence_summary,
+  file = file.path(models_dir, "model_convergence_summary.csv"),
   row.names = FALSE
 )
 
 write.csv(
   posterior_predictions_df,
-  file = "output/models/posterior_predictions_by_epoch.csv",
+  file = file.path(models_dir, "posterior_predictions_by_epoch.csv"),
   row.names = FALSE
 )
 
 write.csv(
   posterior_vmac_df,
-  file = "output/models/posterior_vmac_by_epoch.csv",
+  file = file.path(models_dir, "posterior_vmac_by_epoch.csv"),
   row.names = FALSE
 )
 
 print(loo_summary)
 print(comparisons)
 print(comparison_summary)
+print(convergence_summary)

@@ -138,3 +138,64 @@ get_PPC_diff_epochs <- function(fit, group_size = 576, epoch_len = 24, credMass 
     HighDiff = interval[, 2]
   )
 }
+
+# Model recovery ----
+
+phi_approx <- function(x) plogis(0.07056 * x^3 + 1.5976 * x)   # as Phi_approx in Stan
+
+# Function to draw the parameters of J new participants (J x K, as beta_j in
+# models/*.stan) from the population means and SDs on the latent scale:
+simulate_subject_params <- function(J, mu, sigma, lr_cor) {
+  K <- length(mu)
+  z <- matrix(rnorm(J * K), nrow = J, ncol = K)
+  # Correlated learning rates (columns 3 and 4), as diag_pre_multiply(sigma, L_phi)
+  z[, 4] <- lr_cor * z[, 3] + sqrt(1 - lr_cor^2) * z[, 4]
+  latent <- sweep(sweep(z, 2, sigma, "*"), 2, mu, "+")
+
+  beta <- phi_approx(latent)        # learning rates, [shifter] and alpha0 in (0, 1)
+  beta[, 1] <- latent[, 1]          # intercept, unconstrained
+  beta[, 2] <- 10 * beta[, 2]       # slope in (0, 10)
+  beta
+}
+
+# Function to simulate the omissions of one group (same process as in
+# models/*.stan). Invalid and slow trials keep their observed reward:
+simulate_omissions <- function(stan_data, beta, model = c("model_free", "model_based"),
+                               reversal_reward = c(10, 500) / 500) {
+  model <- match.arg(model)
+  alpha0_col <- if (model == "model_based") 6 else 5
+  nominal_reward <- rbind(c(500, 10) / 500, reversal_reward)   # rows = stages
+
+  omission <- integer(stan_data$N)
+  reward <- stan_data$reward
+
+  for (j in seq_len(stan_data$J)) {
+    alpha_j <- rep(max(0.02, beta[j, alpha0_col]), 2)
+
+    for (n in stan_data$idx_start[j] + seq_len(stan_data$I) - 1) {
+      s <- stan_data$singleton[n]
+
+      # Phase change: the shifter swaps the learned values (model-based only)
+      if (stan_data$change[n] == 1 && model == "model_based") {
+        alpha_j <- beta[j, 5] * rev(alpha_j) + (1 - beta[j, 5]) * alpha_j
+      }
+
+      eta <- beta[j, 1] + beta[j, 2] * (alpha_j[s] - 0.02) / 0.98
+      omission[n] <- rbinom(1, 1, plogis(eta))
+
+      slow <- stan_data$Omission[n] == 0 && stan_data$reward[n] == 0
+      if (stan_data$valid[n] == 1 && !slow) {
+        reward[n] <- nominal_reward[stan_data$phase[n], s] * (1 - omission[n])
+      }
+
+      # Rescorla-Wagner-style update with phase-dependent learning rate
+      lr <- beta[j, stan_data$phase[n] + 2]
+      alpha_j[s] <- max(0.02, alpha_j[s] + lr * abs(alpha_j[s]) * (reward[n] - alpha_j[s]))
+    }
+  }
+
+  # Invalid trials do not enter the likelihood: keep their observed omissions
+  omission[stan_data$valid == 0] <- stan_data$Omission[stan_data$valid == 0]
+
+  list(Omission = omission, reward = reward)
+}

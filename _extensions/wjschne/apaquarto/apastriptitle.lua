@@ -75,6 +75,13 @@ local function makeauthorname(a)
   return authorname
 end
 
+local function as_inlines(x)
+  if pandoc.utils.type(x) == "Inlines" then
+    return x
+  end
+  return pandoc.Inlines(pandoc.Str(pandoc.utils.stringify(x)))
+end
+
 Meta = function(meta)
   meta.apatitle = nil
   meta.apatitledisplay = nil
@@ -88,6 +95,17 @@ Meta = function(meta)
 
     for i, j in ipairs(meta["by-author"]) do
       j.apaauthordisplay = makeauthorname(j.name)
+      local equalcontribution = j["equal-contribution"]
+      if (not equalcontribution) and meta.author and meta.author[i] then
+        equalcontribution = meta.author[i]["equal-contribution"]
+      end
+      if (not equalcontribution) and j.attributes then
+        equalcontribution = j.attributes["equal-contribution"]
+      end
+      if equalcontribution and pandoc.utils.stringify(equalcontribution) == "true" then
+        j.apaauthordisplay = as_inlines(j.apaauthordisplay)
+        j.apaauthordisplay:extend({ pandoc.Str("*") })
+      end
     end
   end
 
